@@ -2,8 +2,11 @@ import psycopg2 as pg
 from psycopg2 import sql
 from datetime import datetime
 import polars as pl
+import os
 
-user, host, password = ["", "", ""]
+user = os.getenv("kwb_dw_user")
+host = os.getenv("kwb_dw_host")
+password = os.getenv("kwb_dw_password")
 
 
 def load(
@@ -30,7 +33,9 @@ def load(
                 pl.col(col).str.strptime(pl.Date, format="%m/%d/%Y")
             )
 
-    write_data_to_tables(data.to_numpy(), dbname, schema, table_name, prim_key)
+    write_data_to_tables(
+        connection, data.to_numpy(), dbname, schema, table_name, prim_key
+    )
 
 
 def read_data(data_path: str) -> pl.DataFrame:
@@ -45,13 +50,12 @@ def read_data(data_path: str) -> pl.DataFrame:
 
 
 def write_data_to_tables(
-    data, db_name: str, schema: str, table: str, prim_key: str = "None"
+    connection, data, db_name: str, schema: str, table: str, prim_key: str = "None"
 ):
-    con = get_pg_connecter(db_name=db_name)
-    check_tables_exists(con, schema=schema, table=table)
-    columns_and_dtypes = get_columns_and_dtypes(con, table)
+    check_tables_exists(connection, schema=schema, table=table)
+    columns_and_dtypes = get_columns_and_dtypes(connection, table)
     try:
-        cur = con.cursor()
+        cur = connection.cursor()
         for row in data:
             query = build_insert_query(
                 row,
@@ -62,10 +66,10 @@ def write_data_to_tables(
             )
             cur.execute(query)
         cur.close()
-        con.close()
+        connection.close()
         print(f"Data was successfully written to {table} table in {db_name} database")
     except:
-        con.close()
+        connection.close()
         print("Data did not get written")
 
 
