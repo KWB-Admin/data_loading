@@ -2,17 +2,17 @@ import psycopg2 as pg
 from psycopg2 import sql
 from datetime import datetime
 import polars as pl
-import os
-
-user = os.getenv("kwb_dw_user")
-host = os.getenv("kwb_dw_host")
-password = os.getenv("kwb_dw_password")
 
 
 def load(
-    dbname: str, schema: str, table_name: str, data_path: str, prim_key: str = "None"
+    credentials: tuple,
+    dbname: str,
+    schema: str,
+    table_name: str,
+    data_path: str,
+    prim_key: str = "None",
 ):
-    connection = get_pg_connecter(dbname)
+    connection = get_pg_connecter(credentials, dbname)
     columns_and_dtypes = get_columns_and_dtypes(connection, table_name)
     data = read_data(data_path)
     new_columns = {
@@ -122,8 +122,9 @@ def build_insert_query(
     return query
 
 
-def get_pg_connecter(db_name: str) -> pg.extensions.connection:
+def get_pg_connecter(credentials: tuple, db_name: str) -> pg.extensions.connection:
     try:
+        user, host, password = credentials
         con = pg.connect(
             f"dbname={db_name} user='{user}' host='{host}' password='{password}'"
         )
